@@ -78,7 +78,7 @@ EXPOSE 5678
 CMD ["n8n", "start"]
 
 
-🐙 docker-compose.yml Funcional
+## 🐙 docker-compose.yml Funcional
 
 version: '3.8'
 
