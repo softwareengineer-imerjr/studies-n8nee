@@ -11,7 +11,9 @@ export const handleEmailLogin = async (
 	email: string,
 	password: string,
 ): Promise<User | undefined> => {
-	const user = await Container.get(UserRepository).findOne({
+	// Usar uma consulta direta sem filtro de tenant para permitir login de qualquer tenant
+	const userRepository = Container.get(UserRepository);
+	const user = await userRepository.manager.getRepository(userRepository.target).findOne({
 		where: { email },
 		relations: ['authIdentities'],
 	});

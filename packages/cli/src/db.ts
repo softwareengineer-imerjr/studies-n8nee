@@ -10,6 +10,9 @@ import { inTest } from '@/constants';
 import { getConnectionOptions, arePostgresOptions } from '@/databases/config';
 import type { Migration } from '@/databases/types';
 import { wrapMigration } from '@/databases/utils/migration-helpers';
+import { TenantSubscriber } from '@/multitenancy/tenant-subscriber';
+import { UserTenantSubscriber } from './databases/subscribers/user-tenant-subscriber';
+import { ProjectTenantSubscriber } from './databases/subscribers/project-tenant-subscriber';
 
 let connection: Connection;
 
@@ -54,6 +57,12 @@ export async function init(): Promise<void> {
 
 	const connectionOptions = getConnectionOptions();
 	connection = new Connection(connectionOptions);
+
+	// Registrar o subscriber para multitenancy
+	connection.subscribers.push(new TenantSubscriber());
+	connection.subscribers.push(new UserTenantSubscriber());
+	connection.subscribers.push(new ProjectTenantSubscriber());
+
 	Container.set(Connection, connection);
 	try {
 		await connection.initialize();

@@ -166,6 +166,7 @@
     "sshpk": "1.17.0",
     "swagger-ui-express": "5.0.1",
     "syslog-client": "1.1.1",
+    "typedi": "^0.10.0",
     "uuid": "catalog:",
     "validator": "13.7.0",
     "ws": "8.17.1",

@@ -26,6 +26,7 @@ build-storybook.log
 junit.xml
 
 # Arquivos do PostgreSQL
+data
 data/postgres/**
 
 # Pasta do projeto

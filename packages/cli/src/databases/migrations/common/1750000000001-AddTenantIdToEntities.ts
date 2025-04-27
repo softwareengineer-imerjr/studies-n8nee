@@ -7,7 +7,7 @@ export class AddTenantIdToEntities1750000000001 implements ReversibleMigration {
 			const tableName = escape.tableName(table);
 			const columnName = escape.columnName('tenantId');
 			await runQuery(
-				`ALTER TABLE ${tableName} ADD COLUMN ${columnName} varchar(36) NOT NULL DEFAULT ''`,
+				`ALTER TABLE ${tableName} ADD COLUMN ${columnName} varchar(36) NOT NULL DEFAULT '1'`,
 			);
 			await runQuery(
 				`CREATE INDEX ${escape.indexName(table + '_tenantId')} ON ${tableName}(${columnName});`,

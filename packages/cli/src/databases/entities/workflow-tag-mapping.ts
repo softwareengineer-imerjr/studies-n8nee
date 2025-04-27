@@ -10,12 +10,12 @@ export class WorkflowTagMapping {
 
 	@ManyToOne('WorkflowEntity', 'tagMappings')
 	@JoinColumn({ name: 'workflowId' })
-	workflows: WorkflowEntity[];
+	workflow: WorkflowEntity;
 
 	@PrimaryColumn()
 	tagId: string;
 
 	@ManyToOne('TagEntity', 'workflowMappings')
 	@JoinColumn({ name: 'tagId' })
-	tags: TagEntity[];
+	tag: TagEntity;
 }

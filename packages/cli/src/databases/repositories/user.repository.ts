@@ -2,13 +2,13 @@ import { Service } from '@n8n/di';
 import type { GlobalRole } from '@n8n/permissions';
 import type { DeepPartial, EntityManager, FindManyOptions } from '@n8n/typeorm';
 import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
+import { tenantContext } from '@/multitenancy/context';
 
 import type { ListQuery } from '@/requests';
 
 import { Project } from '../entities/project';
 import { ProjectRelation } from '../entities/project-relation';
 import { User } from '../entities/user';
-import { tenantContext } from '@/multitenancy/context';
 
 @Service()
 export class UserRepository extends Repository<User> {
@@ -136,9 +136,14 @@ export class UserRepository extends Repository<User> {
 		transactionManager?: EntityManager,
 	): Promise<{ user: User; project: Project }> {
 		const createInner = async (entityManager: EntityManager) => {
-			const tenantId = tenantContext.getStore()?.tenantId ?? '';
+			// Definir explicitamente o tenantId como '1' para garantir que seja preenchido
+			const tenantId = '1';
+
+			// Criar e salvar o usuário com o tenantId
 			const newUser = entityManager.create(User, { ...user, tenantId });
 			const savedUser = await entityManager.save<User>(newUser);
+
+			// Criar e salvar o projeto pessoal com o mesmo tenantId
 			const savedProject = await entityManager.save<Project>(
 				entityManager.create(Project, {
 					type: 'personal',
@@ -146,6 +151,8 @@ export class UserRepository extends Repository<User> {
 					tenantId,
 				}),
 			);
+
+			// Criar a relação entre o usuário e o projeto
 			await entityManager.save<ProjectRelation>(
 				entityManager.create(ProjectRelation, {
 					projectId: savedProject.id,
@@ -153,6 +160,7 @@ export class UserRepository extends Repository<User> {
 					role: 'project:personalOwner',
 				}),
 			);
+
 			return { user: savedUser, project: savedProject };
 		};
 		if (transactionManager) {

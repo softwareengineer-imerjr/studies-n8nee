@@ -10,6 +10,7 @@ import { jsonParse } from 'n8n-workflow';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
+import { tenantMiddleware } from '@/multitenancy/middleware';
 import config from '@/config';
 import {
 	CLI_DIR,
@@ -211,6 +212,9 @@ export class Server extends AbstractServer {
 			req.tenantId = (req as any).user?.tenantId ?? '';
 			next();
 		});
+
+		// Adicionar middleware de tenant
+		this.app.use(tenantMiddleware);
 
 		const { restEndpoint, app } = this;
 
