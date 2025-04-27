@@ -1,27 +1,87 @@
 # n8n Enterprise Hack
 
-Este projeto contém uma configuração personalizada do n8n que desbloqueia recursos Enterprise sem necessidade de licença paga.
+Este projeto aplica customizações ao n8n Community para desbloquear recursos Enterprise sem necessidade de licença paga, além de preparar o caminho para multitenancy via `tenantId`.
 
-## Recursos Habilitados
+---
 
-- Suporte a múltiplos usuários
-- Recursos Enterprise
-- Gerenciamento de usuários
-- Isolamento de workflows e credenciais entre usuários
+## 🚀 Recursos Habilitados
 
-## Como Usar
+- **Pular checagem de licença** (`N8N_SKIP_LICENSE_CHECK=true`)
+- **Suporte a múltiplos usuários** (convite por e-mail, roles)
+- **Recursos Enterprise** (admin, compartilhamento, etc.)
+- **Base para isolação por tenantId** (futura implementação)
 
-### Pré-requisitos
+---
 
-- Docker
-- Docker Compose
+## 🔧 Principais Modificações no Código
 
-### Instalação
+1. **`packages/cli/src/license/license.service.ts`**
+   - Stub das funções de licença quando `N8N_SKIP_LICENSE_CHECK=true`:
+     - `hasFeatureEnabled() → true`
+     - `getFeatureValue() → Infinity`
+     - `getCurrentEntitlements() → []`
+     - `getMainPlan() → { productId: 'enterprise', planName: 'enterprise' }`
 
-1. Crie um arquivo `docker-compose.yml` com o seguinte conteúdo:
+2. **`packages/cli/src/services/license.service.ts`**
+   - Bypass de renovação em local (`renew`) se `N8N_SKIP_LICENSE_CHECK=true`.
+   - Mapeamento de erros de ativação/renovação (AxiosError → BadRequestError).
 
-```yaml
+3. **`packages/cli/src/controllers/invitation.controller.ts`**
+   - Bypass do limite de usuários: permite convidar além da cota se `N8N_SKIP_LICENSE_CHECK=true`.
+   - Lógica de convite por e-mail com checagem de permissão de admin.
+
+4. **`packages/frontend/editor-ui/src/stores/settings.store.ts`**
+   - Exposição de flags de licença (enterprise) e futura chave `tenantId` ao frontend.
+
+---
+
+## 🐳 Dockerfile Funcional
+
+```dockerfile
+# ----------------------------
+# Dockerfile para n8n Enterprise Hack
+# ----------------------------
+FROM node:20-alpine
+
+# Aumenta heap para até 8 GB
+ENV NODE_OPTIONS="--max-old-space-size=8192"
+
+# Instala utilitários e cliente PostgreSQL
+RUN apk add --no-cache bash git python3 make g++ postgresql-client
+
+# Variáveis de ambiente para build e hack de licença
+ENV DOCKER_BUILD=true \
+    NODE_PATH=/usr/src/app/node_modules \
+    N8N_SKIP_LICENSE_CHECK=true
+
+WORKDIR /usr/src/app
+
+# 1️⃣ Copia todo o código-fonte
+COPY . .
+
+# 2️⃣ Instala pnpm, dependências e build do monorepo
+RUN npm install -g pnpm \
+ && pnpm install --frozen-lockfile \
+ && pnpm run build
+
+# 3️⃣ Ajusta script binário (CRLF → LF + permissão)
+RUN sed -i 's/\r$//' packages/cli/bin/n8n \
+ && chmod +x packages/cli/bin/n8n
+
+# 4️⃣ Link global para comando n8n
+RUN ln -s /usr/src/app/packages/cli/bin/n8n /usr/local/bin/n8n
+
+# Porta padrão do n8n
+EXPOSE 5678
+
+# Inicia o n8n com hack de licença
+CMD ["n8n", "start"]
+
+
+🐙 docker-compose.yml Funcional
+
 version: '3.8'
+
 services:
   db:
     image: postgres:14
@@ -39,12 +99,13 @@ services:
       retries: 5
 
   n8n:
-    image: flaviokosta/n8n-enterprise-hack:latest
+    build: .
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
+      # Conexão com Postgres
       DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: db
       DB_POSTGRESDB_PORT: 5432
@@ -52,47 +113,35 @@ services:
       DB_POSTGRESDB_USER: n8n
       DB_POSTGRESDB_PASSWORD: n8n
 
+      # Timezone e migrações
       GENERIC_TIMEZONE: America/Sao_Paulo
       N8N_DATABASE_MIGRATE: 'true'
 
-      # Básico Auth
+      # Basic Auth
       N8N_BASIC_AUTH_ACTIVE: 'true'
       N8N_BASIC_AUTH_USER: admin
       N8N_BASIC_AUTH_PASSWORD: secret
+
+      # Hack Enterprise
       N8N_SKIP_LICENSE_CHECK: 'true'
 
+      # Porta interna
       N8N_PORT: '5678'
+
     ports:
       - '5678:5678'
     volumes:
       - ./data/n8n:/home/node/.n8n
-```
 
-2. Inicie os contêineres:
-```bash
-docker-compose up -d
-```
+📦 Como Executar
 
-3. Acesse o n8n em:
-```
+Coloque Dockerfile e docker-compose.yml na raiz do repositório.
+
+Execute:
+
+docker-compose up -d --build
+
+Acesse via browser:
 http://localhost:5678
-```
 
-Credenciais padrão:
-- Usuário: admin
-- Senha: secret
-
-## Modificações Principais
-
-- Modificação do arquivo `license.ts` para ignorar verificações de licença
-- Configuração do Docker para construir o n8n a partir do código fonte
-- Ajustes no controlador de convites para permitir adicionar usuários além do limite
-- Configuração do PostgreSQL como banco de dados para suportar múltiplos usuários
-
-## Observações
-
-Este projeto é apenas para fins educacionais e de desenvolvimento. Não use em ambiente de produção sem uma licença válida do n8n.
-
-## Autor
-
-Flavio Costa
+Faça login com admin / secret (Basic Auth).
