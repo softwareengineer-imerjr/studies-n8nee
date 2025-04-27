@@ -81,9 +81,12 @@ CMD ["n8n", "start"]
 ---
 
 
-## 🐙 docker-compose.yml Funcional
+## 🐙 docker-compose Funcional
 
-```yaml
+```docker-compose.yml
+# ----------------------------
+# docker-compose.yml para n8n Enterprise Hack
+# ----------------------------
 version: '3.8'
 
 services:
