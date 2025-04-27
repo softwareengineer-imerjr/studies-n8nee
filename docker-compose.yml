@@ -16,7 +16,8 @@ services:
       retries: 5
 
   n8n:
-    image: flaviokosta/n8n-enterprise-hack:latest
+    build: .
+    # image: flaviokosta/n8n-enterprise-hack
     restart: unless-stopped
     depends_on:
       db:
