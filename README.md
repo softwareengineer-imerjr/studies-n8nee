@@ -83,6 +83,7 @@ CMD ["n8n", "start"]
 
 ## 🐙 docker-compose.yml Funcional
 
+```yaml
 version: '3.8'
 
 services:
