@@ -1,0 +1,19 @@
+{
+  "name": "n8n-enterprise-unlocker",
+  "version": "1.0.0",
+  "description": "Extensão para desbloquear recursos Enterprise no n8n",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "echo 'Já compilado'",
+    "dev": "echo 'Já compilado'"
+  },
+  "author": "Flavio Costa",
+  "license": "MIT",
+  "dependencies": {
+    "n8n-core": "^1.0.0",
+    "n8n-workflow": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
