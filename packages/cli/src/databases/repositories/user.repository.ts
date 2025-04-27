@@ -8,6 +8,7 @@ import type { ListQuery } from '@/requests';
 import { Project } from '../entities/project';
 import { ProjectRelation } from '../entities/project-relation';
 import { User } from '../entities/user';
+import { tenantContext } from '@/multitenancy/context';
 
 @Service()
 export class UserRepository extends Repository<User> {
@@ -16,8 +17,9 @@ export class UserRepository extends Repository<User> {
 	}
 
 	async findManyByIds(userIds: string[]) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.find({
-			where: { id: In(userIds) },
+			where: { id: In(userIds), tenantId },
 		});
 	}
 
@@ -35,40 +37,44 @@ export class UserRepository extends Repository<User> {
 	}
 
 	async deleteAllExcept(user: User) {
-		await this.delete({ id: Not(user.id) });
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		await this.delete({ id: Not(user.id), tenantId });
 	}
 
 	async getByIds(transaction: EntityManager, ids: string[]) {
-		return await transaction.find(User, { where: { id: In(ids) } });
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		return await transaction.find(User, { where: { id: In(ids), tenantId } });
 	}
 
 	async findManyByEmail(emails: string[]) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.find({
-			where: { email: In(emails) },
+			where: { email: In(emails), tenantId },
 			select: ['email', 'password', 'id'],
 		});
 	}
 
 	async deleteMany(userIds: string[]) {
-		return await this.delete({ id: In(userIds) });
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		return await this.delete({ id: In(userIds), tenantId });
 	}
 
 	async findNonShellUser(email: string) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.findOne({
-			where: {
-				email,
-				password: Not(IsNull()),
-			},
+			where: { email, password: Not(IsNull()), tenantId },
 			relations: ['authIdentities'],
 		});
 	}
 
 	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
 	async countUsersByRole() {
-		const rows = (await this.createQueryBuilder()
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		const qb = this.createQueryBuilder()
 			.select(['role', 'COUNT(role) as count'])
-			.groupBy('role')
-			.execute()) as Array<{ role: GlobalRole; count: string }>;
+			.where('tenantId = :tenantId', { tenantId })
+			.groupBy('role');
+		const rows = (await qb.execute()) as Array<{ role: GlobalRole; count: string }>;
 		return rows.reduce(
 			(acc, row) => {
 				acc[row.role] = parseInt(row.count, 10);
@@ -79,7 +85,8 @@ export class UserRepository extends Repository<User> {
 	}
 
 	async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
-		const findManyOptions: FindManyOptions<User> = {};
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		const findManyOptions: FindManyOptions<User> = { where: { tenantId } };
 
 		if (!listQueryOptions) {
 			findManyOptions.relations = ['authIdentities'];
@@ -103,7 +110,7 @@ export class UserRepository extends Repository<User> {
 		if (filter) {
 			const { isOwner, ...otherFilters } = filter;
 
-			findManyOptions.where = otherFilters;
+			findManyOptions.where = { ...otherFilters, tenantId };
 
 			if (isOwner !== undefined) {
 				findManyOptions.where.role = isOwner ? 'global:owner' : Not('global:owner');
@@ -117,9 +124,10 @@ export class UserRepository extends Repository<User> {
 	 * Get emails of users who have completed setup, by user IDs.
 	 */
 	async getEmailsByIds(userIds: string[]) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.find({
 			select: ['email'],
-			where: { id: In(userIds), password: Not(IsNull()) },
+			where: { id: In(userIds), password: Not(IsNull()), tenantId },
 		});
 	}
 
@@ -128,12 +136,14 @@ export class UserRepository extends Repository<User> {
 		transactionManager?: EntityManager,
 	): Promise<{ user: User; project: Project }> {
 		const createInner = async (entityManager: EntityManager) => {
-			const newUser = entityManager.create(User, user);
+			const tenantId = tenantContext.getStore()?.tenantId ?? '';
+			const newUser = entityManager.create(User, { ...user, tenantId });
 			const savedUser = await entityManager.save<User>(newUser);
 			const savedProject = await entityManager.save<Project>(
 				entityManager.create(Project, {
 					type: 'personal',
 					name: savedUser.createPersonalProjectName(),
+					tenantId,
 				}),
 			);
 			await entityManager.save<ProjectRelation>(
@@ -159,8 +169,10 @@ export class UserRepository extends Repository<User> {
 	 * Returns null if the workflow does not exist or is owned by a team project.
 	 */
 	async findPersonalOwnerForWorkflow(workflowId: string): Promise<User | null> {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.findOne({
 			where: {
+				tenantId,
 				projectRelations: {
 					role: 'project:personalOwner',
 					project: { sharedWorkflows: { workflowId, role: 'workflow:owner' } },
@@ -175,13 +187,9 @@ export class UserRepository extends Repository<User> {
 	 * Returns null if the project does not exist or is not a personal project.
 	 */
 	async findPersonalOwnerForProject(projectId: string): Promise<User | null> {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.findOne({
-			where: {
-				projectRelations: {
-					role: 'project:personalOwner',
-					projectId,
-				},
-			},
+			where: { tenantId, projectRelations: { role: 'project:personalOwner', projectId } },
 		});
 	}
 }

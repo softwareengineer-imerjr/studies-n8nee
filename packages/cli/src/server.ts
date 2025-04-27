@@ -206,6 +206,12 @@ export class Server extends AbstractServer {
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
+		// Middleware multitenant: anexar tenantId do usuário autenticado ao request
+		this.app.use((req: express.Request & { tenantId?: string; user?: any }, _res, next) => {
+			req.tenantId = (req as any).user?.tenantId ?? '';
+			next();
+		});
+
 		const { restEndpoint, app } = this;
 
 		const push = Container.get(Push);

@@ -5,6 +5,7 @@ import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 
 import type { ListQuery } from '@/requests';
 import { RoleService } from '@/services/role.service';
+import { tenantContext } from '@/multitenancy/context';
 
 import { CredentialsEntity } from '../entities/credentials-entity';
 import type { User } from '../entities/user';
@@ -19,9 +20,10 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	async findStartingWith(credentialName: string) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.find({
 			select: ['name'],
-			where: { name: Like(`${credentialName}%`) },
+			where: { name: Like(`${credentialName}%`), tenantId },
 		});
 	}
 
@@ -30,6 +32,8 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		credentialIds?: string[],
 	) {
 		const findManyOptions = this.toFindManyOptions(listQueryOptions);
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		findManyOptions.where = { ...findManyOptions.where, tenantId };
 
 		if (credentialIds) {
 			findManyOptions.where = { ...findManyOptions.where, id: In(credentialIds) };
@@ -89,7 +93,10 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	async getManyByIds(ids: string[], { withSharings } = { withSharings: false }) {
-		const findManyOptions: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		const findManyOptions: FindManyOptions<CredentialsEntity> = {
+			where: { id: In(ids), tenantId },
+		};
 
 		if (withSharings) {
 			findManyOptions.relations = {
@@ -106,7 +113,8 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 * Find all credentials that are owned by a personal project.
 	 */
 	async findAllPersonalCredentials(): Promise<CredentialsEntity[]> {
-		return await this.findBy({ shared: { project: { type: 'personal' } } });
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		return await this.findBy({ shared: { project: { type: 'personal' } }, tenantId });
 	}
 
 	/**
@@ -117,8 +125,10 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 * workflow.
 	 */
 	async findAllCredentialsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.findBy({
 			shared: { project: { sharedWorkflows: { workflowId } } },
+			tenantId,
 		});
 	}
 
@@ -129,7 +139,8 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 * are part of this project.
 	 */
 	async findAllCredentialsForProject(projectId: string): Promise<CredentialsEntity[]> {
-		return await this.findBy({ shared: { projectId } });
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		return await this.findBy({ shared: { projectId }, tenantId });
 	}
 
 	/**
@@ -140,7 +151,8 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 * all scopes the user has for the credential using `RoleService.addScopes`.
 	 **/
 	async findCredentialsForUser(user: User, scopes: Scope[]) {
-		let where: FindOptionsWhere<CredentialsEntity> = {};
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		let where: FindOptionsWhere<CredentialsEntity> = { tenantId };
 
 		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
 			const projectRoles = this.roleService.rolesWithScope('project', scopes);

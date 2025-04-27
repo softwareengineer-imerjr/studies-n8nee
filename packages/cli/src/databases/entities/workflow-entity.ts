@@ -98,6 +98,10 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ default: 0 })
 	triggerCount: number;
 
+	@Index()
+	@Column({ length: 36 })
+	tenantId: string;
+
 	@ManyToOne('Folder', 'workflows', {
 		nullable: true,
 		onDelete: 'CASCADE',

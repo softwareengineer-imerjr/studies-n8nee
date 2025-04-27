@@ -5,6 +5,7 @@ import { DataSource, MoreThanOrEqual, QueryFailedError, Repository } from '@n8n/
 import type { User } from '@/databases/entities/user';
 
 import { StatisticsNames, WorkflowStatistics } from '../entities/workflow-statistics';
+import { tenantContext } from '@/multitenancy/context';
 
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
@@ -104,9 +105,11 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 	}
 
 	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.count({
 			where: {
 				workflow: {
+					tenantId,
 					shared: {
 						role: 'workflow:owner',
 						project: { projectRelations: { userId, role: 'project:personalOwner' } },

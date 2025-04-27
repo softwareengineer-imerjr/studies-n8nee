@@ -4,6 +4,7 @@ import { DataSource, Repository, In, Not } from '@n8n/typeorm';
 import type { EntityManager, FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 
 import { RoleService } from '@/services/role.service';
+import { tenantContext } from '@/multitenancy/context';
 
 import type { Project } from '../entities/project';
 import { SharedWorkflow, type WorkflowSharingRole } from '../entities/shared-workflow';
@@ -19,20 +20,25 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	}
 
 	async getSharedWorkflowIds(workflowIds: string[]) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		const sharedWorkflows = await this.find({
 			select: ['workflowId'],
 			where: {
 				workflowId: In(workflowIds),
+				project: { tenantId },
 			},
+			relations: { project: true },
 		});
 		return sharedWorkflows.map((sharing) => sharing.workflowId);
 	}
 
 	async findByWorkflowIds(workflowIds: string[]) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.find({
 			where: {
 				role: 'workflow:owner',
 				workflowId: In(workflowIds),
+				project: { tenantId },
 			},
 			relations: { project: { projectRelations: { user: true } } },
 		});
@@ -42,6 +48,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		userId: string,
 		workflowId: string,
 	): Promise<WorkflowSharingRole | undefined> {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		const sharing = await this.findOne({
 			// NOTE: We have to select everything that is used in the `where` clause. Otherwise typeorm will create an invalid query and we get this error:
 			//       QueryFailedError: SQLITE_ERROR: no such column: distinctAlias.SharedWorkflow_...
@@ -52,7 +59,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			},
 			where: {
 				workflowId,
-				project: { projectRelations: { role: 'project:personalOwner', userId } },
+				project: { tenantId, projectRelations: { role: 'project:personalOwner', userId } },
 			},
 		});
 
@@ -91,9 +98,11 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		workflowIds: string[],
 		{ select }: Pick<FindManyOptions<SharedWorkflow>, 'select'>,
 	) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.find({
 			where: {
 				workflowId: In(workflowIds),
+				project: { tenantId },
 			},
 			select,
 		});
@@ -114,7 +123,8 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		scopes: Scope[],
 		{ includeTags = false, includeParentFolder = false, em = this.manager } = {},
 	) {
-		let where: FindOptionsWhere<SharedWorkflow> = { workflowId };
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		let where: FindOptionsWhere<SharedWorkflow> = { workflowId, project: { tenantId } };
 
 		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
 			const projectRoles = this.roleService.rolesWithScope('project', scopes);
@@ -123,12 +133,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			where = {
 				...where,
 				role: In(workflowRoles),
-				project: {
-					projectRelations: {
-						role: In(projectRoles),
-						userId: user.id,
-					},
-				},
+				project: { tenantId, projectRelations: { role: In(projectRoles), userId: user.id } },
 			};
 		}
 
@@ -151,7 +156,8 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	}
 
 	async findAllWorkflowsForUser(user: User, scopes: Scope[]) {
-		let where: FindOptionsWhere<SharedWorkflow> = {};
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		let where: FindOptionsWhere<SharedWorkflow> = { project: { tenantId } };
 
 		if (!user.hasGlobalScope(scopes, { mode: 'allOf' })) {
 			const projectRoles = this.roleService.rolesWithScope('project', scopes);
@@ -160,12 +166,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			where = {
 				...where,
 				role: In(workflowRoles),
-				project: {
-					projectRelations: {
-						role: In(projectRoles),
-						userId: user.id,
-					},
-				},
+				project: { tenantId, projectRelations: { role: In(projectRoles), userId: user.id } },
 			};
 		}
 
@@ -185,7 +186,12 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	 * Find the IDs of all the projects where a workflow is accessible.
 	 */
 	async findProjectIds(workflowId: string) {
-		const rows = await this.find({ where: { workflowId }, select: ['projectId'] });
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		const rows = await this.find({
+			where: { workflowId, project: { tenantId } },
+			relations: { project: true },
+			select: ['projectId'],
+		});
 
 		const projectIds = rows.reduce<string[]>((acc, row) => {
 			if (row.projectId) acc.push(row.projectId);
@@ -196,9 +202,10 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	}
 
 	async getWorkflowOwningProject(workflowId: string) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return (
 			await this.findOne({
-				where: { workflowId, role: 'workflow:owner' },
+				where: { workflowId, role: 'workflow:owner', project: { tenantId } },
 				relations: { project: true },
 			})
 		)?.project;

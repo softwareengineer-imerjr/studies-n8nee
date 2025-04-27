@@ -26,6 +26,10 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	})
 	type: string;
 
+	@Index()
+	@Column({ length: 36 })
+	tenantId: string;
+
 	@OneToMany('SharedCredentials', 'credentials')
 	shared: SharedCredentials[];
 

@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+import { tenantContext } from '@/multitenancy/context';
 
 import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
 
@@ -10,8 +11,9 @@ export class WorkflowTagMappingRepository extends Repository<WorkflowTagMapping>
 	}
 
 	async overwriteTaggings(workflowId: string, tagIds: string[]) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.manager.transaction(async (tx) => {
-			await tx.delete(WorkflowTagMapping, { workflowId });
+			await tx.delete(WorkflowTagMapping, { workflow: { id: workflowId, tenantId } });
 
 			const taggings = tagIds.map((tagId) => this.create({ workflowId, tagId }));
 

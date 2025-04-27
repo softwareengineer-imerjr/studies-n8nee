@@ -41,6 +41,10 @@ export class User extends WithTimestamps implements IUser {
 	@PrimaryGeneratedColumn('uuid')
 	id: string;
 
+	@Index()
+	@Column({ length: 36 })
+	tenantId: string;
+
 	@Column({
 		length: 254,
 		nullable: true,

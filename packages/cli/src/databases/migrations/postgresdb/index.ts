@@ -84,6 +84,7 @@ import { CreateFolderTable1738709609940 } from '../common/1738709609940-CreateFo
 import { CreateAnalyticsTables1739549398681 } from '../common/1739549398681-CreateAnalyticsTables';
 import { RenameAnalyticsToInsights1741167584277 } from '../common/1741167584277-RenameAnalyticsToInsights';
 import { AddScopesColumnToApiKeys1742918400000 } from '../common/1742918400000-AddScopesColumnToApiKeys';
+import { AddTenantIdToEntities1750000000001 } from '../common/1750000000001-AddTenantIdToEntities';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -154,6 +155,7 @@ export const postgresMigrations: Migration[] = [
 	CreateProcessedDataTable1726606152711,
 	AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644,
 	UpdateProcessedDataValueColumnToText1729607673464,
+	AddProjectIcons1729607673469,
 	CreateTestDefinitionTable1730386903556,
 	AddDescriptionToTestDefinition1731404028106,
 	MigrateTestDefinitionKeyToString1731582748663,
@@ -161,7 +163,6 @@ export const postgresMigrations: Migration[] = [
 	CreateTestRun1732549866705,
 	AddMockedNodesColumnToTestDefinition1733133775640,
 	AddManagedColumnToCredentialsTable1734479635324,
-	AddProjectIcons1729607673469,
 	AddStatsColumnsToTestRun1736172058779,
 	CreateTestCaseExecutionTable1736947513045,
 	AddErrorColumnsToTestRuns1737715421462,
@@ -170,4 +171,5 @@ export const postgresMigrations: Migration[] = [
 	UpdateParentFolderIdColumn1740445074052,
 	RenameAnalyticsToInsights1741167584277,
 	AddScopesColumnToApiKeys1742918400000,
+	AddTenantIdToEntities1750000000001,
 ];

@@ -1,5 +1,5 @@
 import { ProjectIcon, ProjectType } from '@n8n/api-types';
-import { Column, Entity, OneToMany } from '@n8n/typeorm';
+import { Column, Entity, OneToMany, Index } from '@n8n/typeorm';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
 import type { ProjectRelation } from './project-relation';
@@ -16,6 +16,10 @@ export class Project extends WithTimestampsAndStringId {
 
 	@Column({ type: 'json', nullable: true })
 	icon: ProjectIcon;
+
+	@Index()
+	@Column({ length: 36 })
+	tenantId: string;
 
 	@OneToMany('ProjectRelation', 'project')
 	projectRelations: ProjectRelation[];

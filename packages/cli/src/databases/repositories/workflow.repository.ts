@@ -21,6 +21,7 @@ import { TagEntity } from '../entities/tag-entity';
 import { WebhookEntity } from '../entities/webhook-entity';
 import { WorkflowEntity } from '../entities/workflow-entity';
 import { WorkflowTagMapping } from '../entities/workflow-tag-mapping';
+import { tenantContext } from '@/multitenancy/context';
 
 type ResourceType = 'folder' | 'workflow';
 
@@ -55,16 +56,18 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		where: FindOptionsWhere<WorkflowEntity>,
 		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },
 	) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.findOne({
-			where,
+			where: { ...where, tenantId },
 			relations: options?.relations,
 		});
 	}
 
 	async getAllActiveIds() {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		const result = await this.find({
 			select: { id: true },
-			where: { active: true },
+			where: { active: true, tenantId },
 			relations: { shared: { project: { projectRelations: true } } },
 		});
 
@@ -72,9 +75,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async getActiveIds({ maxResults }: { maxResults?: number } = {}) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		const activeWorkflows = await this.find({
 			select: ['id'],
-			where: { active: true },
+			where: { active: true, tenantId },
 			// 'take' and 'order' are only needed when maxResults is provided:
 			...(maxResults ? { take: maxResults, order: { createdAt: 'ASC' } } : {}),
 		});
@@ -82,21 +86,22 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async getActiveCount() {
-		return await this.count({
-			where: { active: true },
-		});
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		return await this.count({ where: { active: true, tenantId } });
 	}
 
 	async findById(workflowId: string) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.findOne({
-			where: { id: workflowId },
+			where: { id: workflowId, tenantId },
 			relations: { shared: { project: { projectRelations: true } } },
 		});
 	}
 
 	async findByIds(workflowIds: string[], { fields }: { fields?: string[] } = {}) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		const options: FindManyOptions<WorkflowEntity> = {
-			where: { id: In(workflowIds) },
+			where: { id: In(workflowIds), tenantId },
 		};
 
 		if (fields?.length) options.select = fields as FindOptionsSelect<WorkflowEntity>;
@@ -105,13 +110,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async getActiveTriggerCount() {
-		const totalTriggerCount = await this.sum('triggerCount', {
-			active: true,
-		});
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		const totalTriggerCount = await this.sum('triggerCount', { active: true, tenantId });
 		return totalTriggerCount ?? 0;
 	}
 
 	async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		const qb = this.createQueryBuilder('workflow');
 		const dbType = this.globalConfig.database.type;
 		return await qb
@@ -125,7 +130,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 					return '"updatedAt"';
 				},
 			})
-			.where('id = :id', { id })
+			.where('id = :id AND tenantId = :tenantId', { id, tenantId })
 			.execute();
 	}
 
@@ -378,13 +383,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	private createBaseQuery(workflowIds: string[]): SelectQueryBuilder<WorkflowEntity> {
-		return this.createQueryBuilder('workflow').where('workflow.id IN (:...workflowIds)', {
-			/*
-			 * If workflowIds is empty, add a dummy value to prevent an error
-			 * when using the IN operator with an empty array.
-			 */
-			workflowIds: !workflowIds.length ? [''] : workflowIds,
-		});
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		return this.createQueryBuilder('workflow').where(
+			'workflow.id IN (:...workflowIds) AND workflow.tenantId = :tenantId',
+			{
+				workflowIds: !workflowIds.length ? [''] : workflowIds,
+				tenantId,
+			},
+		);
 	}
 
 	private applyFilters(
