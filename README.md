@@ -31,7 +31,16 @@ Este projeto aplica customizações ao n8n Community para desbloquear recursos E
    - Lógica de convite por e-mail com checagem de permissão de admin.
 
 4. **`packages/frontend/editor-ui/src/stores/settings.store.ts`**
-   - Exposição de flags de licença (enterprise) e futura chave `tenantId` ao frontend.
+   - Exposição de flags de licença (enterprise) ao frontend.
+
+5. **`packages/frontend/editor-ui/src/stores/settings.store.ts`** *(nova modificação)*
+   - **HACK**: remove o banner “não-produção” configurando
+     ```ts
+     if (settings.value.enterprise) {
+       settings.value.enterprise.showNonProdBanner = false;
+     }
+     ```
+     dentro de `setSettings()`, para não exibir a mensagem “This n8n instance is not licensed for production purposes.”
 
 ---
 
@@ -152,3 +161,5 @@ Acesse via browser:
 http://localhost:5678
 
 Faça login com admin / secret (Basic Auth).
+
+⚠️ Atenção: Este hack é para fins de desenvolvimento ou testes. Em ambiente de produção, adquira a licença oficial do n8n Enterprise para garantir suporte e conformidade.
