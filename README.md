@@ -153,7 +153,9 @@ services:
 
 Coloque Dockerfile e docker-compose.yml na raiz do repositório.
 
-Execute:
+Execute na raiz do repositório:
+
+pnpm install
 
 docker-compose up -d --build
 
