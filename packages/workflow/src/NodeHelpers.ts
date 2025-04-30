@@ -959,7 +959,11 @@ export function getNodeParameters(
 				// For fixedCollections, which only allow one value, it is important to still return
 				// the empty object which indicates that a value got added, even if it does not have
 				// anything set. If that is not done, the value would get lost.
-				return nodeValues;
+				const returnValue = {} as INodeParameters;
+				Object.keys(propertyValues || {}).forEach((value) => {
+					returnValue[value] = {};
+				});
+				nodeParameters[nodeProperties.name] = returnValue;
 			}
 
 			// Iterate over all collections
@@ -1126,14 +1130,34 @@ export function getNodeWebhookUrl(
 		path = path.slice(1);
 	}
 
-	// Adicionar o tenantId '1' à URL do webhook
-	// Verificar se o baseUrl já contém o tenantId
-	if (!baseUrl.includes('/1/')) {
-		// Se não contém, adicionar o tenantId antes do path
-		return `${baseUrl}/1/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
+	// Remover a barra final da URL base, se existir
+	const baseUrlWithoutTrailingSlash = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+
+	// Verificar se a URL base já contém o endpoint webhook ou webhook-test
+	let baseWithoutEndpoint = baseUrlWithoutTrailingSlash;
+	let endpoint = 'webhook'; // Padrão é webhook
+
+	// Verificar se a URL base já contém webhook ou webhook-test
+	if (baseUrlWithoutTrailingSlash.endsWith('/webhook')) {
+		baseWithoutEndpoint = baseUrlWithoutTrailingSlash.substring(
+			0,
+			baseUrlWithoutTrailingSlash.lastIndexOf('/webhook'),
+		);
+		endpoint = 'webhook';
+	} else if (baseUrlWithoutTrailingSlash.endsWith('/webhook-test')) {
+		baseWithoutEndpoint = baseUrlWithoutTrailingSlash.substring(
+			0,
+			baseUrlWithoutTrailingSlash.lastIndexOf('/webhook-test'),
+		);
+		endpoint = 'webhook-test';
 	}
 
-	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
+	// Obter o caminho do webhook sem o endpoint
+	const webhookPath = getNodeWebhookPath(workflowId, node, path, isFullPath);
+
+	// Construir a URL com o tenantId antes do endpoint
+	// Formato: baseUrl/1/endpoint/webhookPath
+	return `${baseWithoutEndpoint}/1/${endpoint}/${webhookPath}`;
 }
 
 export function getConnectionTypes(
@@ -1742,7 +1766,7 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 		destination.execution = true;
 	}
 
-	const objectProperties = ['parameters', 'credentials'];
+	const objectProperties = ['parameters', 'credentials', 'input'];
 
 	let destinationProperty: INodeIssueObjectProperty;
 	for (const propertyName of objectProperties) {
