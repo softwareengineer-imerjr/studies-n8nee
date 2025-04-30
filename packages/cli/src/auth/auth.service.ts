@@ -57,6 +57,10 @@ export class AuthService {
 			// we need to exclude push endpoint because we can't send custom header on websocket requests
 			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
 			`/${restEndpoint}/push`,
+			// Adicionando a rota com tenantId para o push
+			`/${restEndpoint}/1/push`,
+			// Adicionando a rota com tenantId antes do endpoint rest
+			`/1/${restEndpoint}/push`,
 
 			// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
 			`/${restEndpoint}/binary-data/`,

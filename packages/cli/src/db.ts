@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource as Connection } from '@n8n/typeorm';
+
 import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
 
@@ -10,9 +11,13 @@ import { inTest } from '@/constants';
 import { getConnectionOptions, arePostgresOptions } from '@/databases/config';
 import type { Migration } from '@/databases/types';
 import { wrapMigration } from '@/databases/utils/migration-helpers';
+
 import { TenantSubscriber } from '@/multitenancy/tenant-subscriber';
-import { UserTenantSubscriber } from './databases/subscribers/user-tenant-subscriber';
+
+import { ExecutionTenantSubscriber } from './databases/subscribers/execution-tenant-subscriber';
 import { ProjectTenantSubscriber } from './databases/subscribers/project-tenant-subscriber';
+import { UserTenantSubscriber } from './databases/subscribers/user-tenant-subscriber';
+import { WorkflowTenantSubscriber } from './databases/subscribers/workflow-tenant-subscriber';
 
 let connection: Connection;
 
@@ -59,9 +64,11 @@ export async function init(): Promise<void> {
 	connection = new Connection(connectionOptions);
 
 	// Registrar o subscriber para multitenancy
+	connection.subscribers.push(new ExecutionTenantSubscriber());
+	connection.subscribers.push(new ProjectTenantSubscriber());
 	connection.subscribers.push(new TenantSubscriber());
 	connection.subscribers.push(new UserTenantSubscriber());
-	connection.subscribers.push(new ProjectTenantSubscriber());
+	connection.subscribers.push(new WorkflowTenantSubscriber());
 
 	Container.set(Connection, connection);
 	try {

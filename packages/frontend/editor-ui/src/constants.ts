@@ -508,8 +508,10 @@ export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.r
 
 export const enum VIEWS {
 	HOMEPAGE = 'Homepage',
+	HOMEPAGE_WITH_TENANT = 'HomepageWithTenant',
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTIONS = 'Executions',
+	EXECUTIONS_WITH_TENANT = 'ExecutionsWithTenant',
 	EXECUTION_PREVIEW = 'ExecutionPreview',
 	EXECUTION_DEBUG = 'ExecutionDebug',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
@@ -517,7 +519,9 @@ export const enum VIEWS {
 	TEMPLATE_SETUP = 'TemplatesWorkflowSetupView',
 	TEMPLATES = 'TemplatesSearchView',
 	CREDENTIALS = 'CredentialsView',
+	CREDENTIALS_WITH_TENANT = 'CredentialsViewWithTenant',
 	VARIABLES = 'VariablesView',
+	VARIABLES_WITH_TENANT = 'VariablesViewWithTenant',
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
 	DEMO = 'WorkflowDemo',
@@ -537,6 +541,7 @@ export const enum VIEWS {
 	NOT_FOUND = 'NotFoundView',
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
+	WORKFLOWS_WITH_TENANT = 'WorkflowsViewWithTenant',
 	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	TEST_DEFINITION = 'TestDefinition',
 	TEST_DEFINITION_EDIT = 'TestDefinitionEdit',

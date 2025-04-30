@@ -1,6 +1,7 @@
 import {
 	Column,
 	Entity,
+	Index,
 	JoinColumn,
 	JoinTable,
 	ManyToMany,
@@ -22,6 +23,10 @@ export type FolderWithWorkflowAndSubFolderCount = Folder & {
 export class Folder extends WithTimestampsAndStringId {
 	@Column()
 	name: string;
+
+	@Index()
+	@Column({ length: 36 })
+	tenantId: string;
 
 	@Column({ nullable: true })
 	parentFolderId: string | null;

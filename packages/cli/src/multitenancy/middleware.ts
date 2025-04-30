@@ -1,7 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+
 import { tenantContext } from './context';
 
-// Estender a interface Request para incluir o campo user
+// Extend the Request interface to include the user field
 declare global {
 	namespace Express {
 		interface Request {
@@ -13,36 +14,60 @@ declare global {
 }
 
 /**
- * Middleware para configurar o contexto de tenant para cada requisição.
- * Permite login de qualquer tenant e depois usa o tenantId do usuário autenticado.
+ * Middleware to configure tenant context for each request.
+ * Extracts tenant ID from URLs in the format /:tenantId/... and configures the context.
+ * Allows login from any tenant and then uses the authenticated user's tenantId.
  */
 export function tenantMiddleware(req: Request, _res: Response, next: NextFunction): void {
-	// Verificar se é uma requisição de login
-	const isLoginRequest = req.path === '/rest/login' && req.method === 'POST';
+	const { path } = req;
+	const defaultTenantId = '1';
 
-	if (isLoginRequest) {
-		// Para requisições de login, não aplicamos filtro de tenant
-		// Isso permite que usuários de qualquer tenant façam login
-		tenantContext.run({ tenantId: '' }, () => {
+	// Rota de setup não precisa de tenant
+	if (path === '/setup' || path.startsWith('/setup/')) {
+		tenantContext.run({ tenantId: defaultTenantId }, () => {
 			next();
 		});
 		return;
 	}
 
-	// Verificar se o usuário está autenticado
-	if (req.user && req.user.tenantId) {
-		// Se o usuário estiver autenticado, usar o tenantId do usuário
-		tenantContext.run({ tenantId: req.user.tenantId }, () => {
+	// Rotas de login não precisam de tenant
+	if (
+		path === '/signin' ||
+		path.startsWith('/signin/') ||
+		path === '/signout' ||
+		path.startsWith('/signout/')
+	) {
+		tenantContext.run({ tenantId: defaultTenantId }, () => {
 			next();
 		});
 		return;
 	}
 
-	// Para todas as outras requisições, usar o tenantId padrão
-	const tenantId = '1'; // ID de tenant padrão
+	// Rotas de API não precisam de tenant no URL
+	if (path.startsWith('/api/') || path.startsWith('/rest/')) {
+		tenantContext.run({ tenantId: defaultTenantId }, () => {
+			next();
+		});
+		return;
+	}
 
-	// Executar o próximo middleware no contexto do tenant
-	tenantContext.run({ tenantId }, () => {
-		next();
-	});
+	// Extrai o tenantId da URL
+	const match = path.match(/^\/(\d+)(?:\/|$)/);
+	if (match) {
+		const [, tenantId] = match;
+		// Reescreve a URL para remover o tenantId
+		req.url = req.url.replace(/^\/\d+/, '');
+		if (req.url === '') {
+			req.url = '/';
+		}
+
+		tenantContext.run({ tenantId }, () => {
+			next();
+		});
+	} else {
+		// Se não tem tenantId na URL, usa o padrão
+		tenantContext.run({ tenantId: defaultTenantId }, () => {
+			next();
+		});
+	}
 }

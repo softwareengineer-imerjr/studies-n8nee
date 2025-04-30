@@ -77,7 +77,12 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const OAuthCallbackUrls = computed(() => state.value.oauthCallbackUrls);
 
-	const restUrl = computed(() => `${state.value.baseUrl}${state.value.restEndpoint}`);
+	// Modificando a URL da API para incluir o tenantId
+	const tenantId = '1'; // Usando o tenantId padrão
+	const restUrl = computed(() => {
+		// Garantindo que haja uma barra entre o tenantId e o restEndpoint
+		return `${state.value.baseUrl}/${tenantId}/${state.value.restEndpoint}`.replace(/\/+/g, '/');
+	});
 
 	const executionTimeout = computed(() => state.value.executionTimeout);
 

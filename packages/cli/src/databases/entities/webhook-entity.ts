@@ -22,6 +22,10 @@ export class WebhookEntity {
 	@Column({ nullable: true })
 	pathLength?: number;
 
+	@Index()
+	@Column({ length: 36 })
+	tenantId: string;
+
 	/**
 	 * Unique section of webhook path.
 	 *

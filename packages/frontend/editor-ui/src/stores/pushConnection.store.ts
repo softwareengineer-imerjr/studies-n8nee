@@ -43,13 +43,14 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	const getConnectionUrl = () => {
 		const restUrl = rootStore.restUrl;
+		// URL padrão sem tenantId, já que o restUrl já inclui o tenantId
 		const url = `/push?pushRef=${rootStore.pushRef}`;
 
 		if (useWebSockets) {
 			const { protocol, host } = window.location;
 			const baseUrl = restUrl.startsWith('http')
 				? restUrl.replace(/^http/, 'ws')
-				: `${protocol === 'https:' ? 'wss' : 'ws'}://${host + restUrl}`;
+				: `${protocol === 'https:' ? 'wss' : 'ws'}://${host}${restUrl}`;
 			return `${baseUrl}${url}`;
 		} else {
 			return `${restUrl}${url}`;

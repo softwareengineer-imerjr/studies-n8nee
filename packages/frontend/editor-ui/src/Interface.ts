@@ -580,6 +580,7 @@ export interface IUser extends IUserResponse {
 	fullName?: string;
 	createdAt?: string;
 	mfaEnabled: boolean;
+	tenantId?: string;
 }
 
 export interface IUserListAction {

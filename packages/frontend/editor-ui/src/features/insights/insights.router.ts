@@ -8,7 +8,7 @@ const InsightsDashboard = async () =>
 
 export const insightsRoutes: RouteRecordRaw[] = [
 	{
-		path: '/insights',
+		path: '/:tenantId/insights',
 		beforeEnter() {
 			const insightsStore = useInsightsStore();
 			return insightsStore.isInsightsEnabled || { name: VIEWS.NOT_FOUND };

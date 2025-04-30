@@ -1,26 +1,20 @@
-import type {
-	NavigationGuardNext,
-	RouteLocation,
-	RouteRecordRaw,
-	RouteLocationRaw,
-	RouteLocationNormalized,
-} from 'vue-router';
-import { createRouter, createWebHistory, isNavigationFailure } from 'vue-router';
+import type { RouteLocation, RouteRecordRaw, RouteLocationNormalized } from 'vue-router';
+import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
+import { h } from 'vue';
+
 import { useExternalHooks } from '@/composables/useExternalHooks';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from '@/stores/sso.store';
 import { useTestDefinitionStore } from '@/stores/testDefinition.store.ee';
-import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
+import { VIEWS, EDITABLE_CANVAS_VIEWS, EnterpriseEditionFeature } from '@/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { middleware } from '@/utils/rbac/middleware';
-import type { RouterMiddleware } from '@/types/router';
-import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 import { tryToParseNumber } from '@/utils/typesUtils';
 import { projectsRoutes } from '@/routes/projects.routes';
 import { insightsRoutes } from '@/features/insights/insights.router';
-import TestDefinitionRunDetailView from './views/TestDefinition/TestDefinitionRunDetailView.vue';
+import { useUsersStore } from '@/stores/users.store';
+import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
 
 const ChangePasswordView = async () => await import('./views/ChangePasswordView.vue');
 const ErrorView = async () => await import('./views/ErrorView.vue');
@@ -70,6 +64,9 @@ const TestDefinitionEditView = async () =>
 	await import('./views/TestDefinition/TestDefinitionEditView.vue');
 const TestDefinitionRootView = async () =>
 	await import('./views/TestDefinition/TestDefinitionRootView.vue');
+const TestDefinitionRunDetailView = async () =>
+	await import('./views/TestDefinition/TestDefinitionRunDetailView.vue');
+const WorkflowsView = async () => await import('@/views/WorkflowsView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -84,7 +81,14 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 export const routes: RouteRecordRaw[] = [
 	{
 		path: '/',
-		redirect: '/home/workflows',
+		redirect: '/1/home/workflows',
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/:tenantId',
+		redirect: (to) => `/${to.params.tenantId}/home/workflows`,
 		meta: {
 			middleware: ['authenticated'],
 		},
@@ -198,7 +202,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/variables',
+		path: '/:tenantId/variables',
 		name: VIEWS.VARIABLES,
 		components: {
 			default: VariablesView,
@@ -226,7 +230,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/:name/executions',
+		path: '/:tenantId/workflow/:name/executions',
 		name: VIEWS.WORKFLOW_EXECUTIONS,
 		components: {
 			default: WorkflowExecutionsView,
@@ -355,7 +359,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/new',
+		path: '/:tenantId/workflow/new',
 		name: VIEWS.NEW_WORKFLOW,
 		components: {
 			default: NodeView,
@@ -389,7 +393,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/:name',
+		path: '/:tenantId/workflow/:name',
 		name: VIEWS.WORKFLOW,
 		components: {
 			default: NodeView,
@@ -486,7 +490,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/settings',
+		path: '/:tenantId/settings',
 		name: VIEWS.SETTINGS,
 		component: SettingsView,
 		props: true,
@@ -737,6 +741,31 @@ export const routes: RouteRecordRaw[] = [
 			},
 		},
 	},
+	{
+		path: '/:tenantId/home',
+		component: {
+			render: () => h(RouterView),
+		},
+		meta: {
+			middleware: ['authenticated'],
+		},
+		children: [
+			{
+				path: 'workflows',
+				name: VIEWS.WORKFLOWS,
+				components: {
+					default: WorkflowsView,
+					sidebar: MainSidebar,
+				},
+				meta: {
+					middleware: ['authenticated'],
+					telemetry: {
+						pageCategory: 'workflows',
+					},
+				},
+			},
+		],
+	},
 	...projectsRoutes,
 	...insightsRoutes,
 	{
@@ -794,37 +823,108 @@ router.beforeEach(async (to: RouteLocationNormalized, from, next) => {
 		await initializeAuthenticatedFeatures();
 
 		/**
-		 * Redirect to setup page. User should be redirected to this only once
+		 * Check if user is authenticated and allowed to access the page
 		 */
+		const middleware = to.meta?.middleware;
+		if (middleware) {
+			const middlewareFunctions = Array.isArray(middleware) ? middleware : [middleware];
+			for (const execute of middlewareFunctions) {
+				if (execute === 'authenticated') {
+					const usersStore = useUsersStore();
+					const settingsStore = useSettingsStore();
+					const uiStore = useUIStore();
 
-		const settingsStore = useSettingsStore();
-		if (settingsStore.showSetupPage) {
-			if (to.name === VIEWS.SETUP) {
-				return next();
-			}
+					// Verificar se precisa configurar o usuário global:owner
+					// Se showSetupPage for true, redirecionar para a página de setup
+					if (settingsStore.showSetupPage && to.name !== VIEWS.SETUP) {
+						return next({ name: VIEWS.SETUP });
+					}
 
-			return next({ name: VIEWS.SETUP });
-		}
+					if (!usersStore.currentUser) {
+						if (to.name === VIEWS.SIGNIN) {
+							return next();
+						}
 
-		/**
-		 * Verify user permissions for current route
-		 */
+						return next({ name: VIEWS.SIGNIN });
+					}
 
-		const routeMiddleware = to.meta?.middleware ?? [];
-		const routeMiddlewareOptions = to.meta?.middlewareOptions ?? {};
-		for (const middlewareName of routeMiddleware) {
-			let nextCalled = false;
-			const middlewareNext = ((location: RouteLocationRaw): void => {
-				next(location);
-				nextCalled = true;
-			}) as NavigationGuardNext;
+					// Redirecionar para URLs com tenantId
+					if (
+						to.path.match(/^\/\d+\//) === null &&
+						to.name !== VIEWS.SIGNIN &&
+						to.name !== VIEWS.SETUP &&
+						to.name !== VIEWS.SIGNOUT
+					) {
+						// Verificar se a rota atual é a rota de login
+						const isLoginRedirect = from.name === VIEWS.SIGNIN && usersStore.currentUser;
 
-			const middlewareOptions = routeMiddlewareOptions[middlewareName];
-			const middlewareFn = middleware[middlewareName] as RouterMiddleware<unknown>;
-			await middlewareFn(to, from, middlewareNext, middlewareOptions);
+						// Se for um redirecionamento após o login, usar window.location para forçar um redirecionamento completo
+						if (isLoginRedirect) {
+							const tenantId = usersStore.currentUser?.tenantId ?? '1';
+							window.location.href = `${window.location.origin}/${tenantId}/home/workflows`;
+							return;
+						}
 
-			if (nextCalled) {
-				return;
+						// Para outros casos, usar o redirecionamento normal do router
+						const tenantId = usersStore.currentUser?.tenantId ?? '1';
+						const newPath = `/${tenantId}${to.path}`;
+						return next(newPath);
+					}
+
+					if (
+						settingsStore.settings?.enterprise?.sharing &&
+						usersStore.currentUser &&
+						!usersStore.currentUser.role?.includes('owner') &&
+						to.name === VIEWS.USERS_SETTINGS
+					) {
+						return next({ name: VIEWS.PERSONAL_SETTINGS });
+					}
+
+					if (
+						settingsStore.settings?.userManagement?.smtpSetup &&
+						usersStore.currentUser &&
+						!usersStore.currentUser.role?.includes('owner')
+					) {
+						const accessibleRoutes = [
+							VIEWS.PERSONAL_SETTINGS,
+							VIEWS.API_SETTINGS,
+							VIEWS.EXECUTIONS,
+							VIEWS.EXECUTION_DEBUG,
+							VIEWS.EXECUTION_HOME,
+							VIEWS.EXECUTION_PREVIEW,
+							VIEWS.WORKFLOW,
+							VIEWS.NEW_WORKFLOW,
+							VIEWS.WORKFLOW_EXECUTIONS,
+							VIEWS.WORKFLOWS,
+							VIEWS.CREDENTIALS,
+							VIEWS.NEW_CREDENTIAL,
+							VIEWS.CREDENTIAL_EDIT,
+							VIEWS.CREDENTIAL_SELECT,
+							VIEWS.HOMEPAGE,
+							VIEWS.TEMPLATES,
+							VIEWS.TEMPLATE,
+							VIEWS.TEMPLATE_SETUP,
+							VIEWS.COLLECTION,
+							VIEWS.TEMPLATES_SEARCH,
+							VIEWS.SIGNOUT,
+							VIEWS.EXECUTION_PREVIEW,
+						];
+
+						if (!accessibleRoutes.includes(to.name as VIEWS)) {
+							return next({ name: VIEWS.PERSONAL_SETTINGS });
+						}
+					}
+
+					// User is authenticated and allowed to access the page
+					if (
+						to.name === VIEWS.HOMEPAGE ||
+						to.name === VIEWS.WORKFLOWS ||
+						to.name === VIEWS.EXECUTIONS ||
+						to.name === VIEWS.EXECUTION_HOME
+					) {
+						uiStore.closeDialog();
+					}
+				}
 			}
 		}
 

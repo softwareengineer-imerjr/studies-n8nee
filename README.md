@@ -149,7 +149,26 @@ services:
     volumes:
       - ./data/n8n:/home/node/.n8n
 
-📦 Como Executar
+
+📦 Como Executar em nodeJs
+
+
+Coloque Dockerfile e docker-compose.yml na raiz do repositório. (somente os serviços de postgres e o adminer)
+
+Execute na raiz do repositório:
+
+docker-compose up -d --build
+
+pnpm install
+
+execute na pasta packages/cli
+pnpm install
+npx n8n
+
+-----
+
+📦 Como Executar em Docker
+
 
 Coloque Dockerfile e docker-compose.yml na raiz do repositório.
 
@@ -161,7 +180,5 @@ docker-compose up -d --build
 
 Acesse via browser:
 http://localhost:5678
-
-Faça login com admin / secret (Basic Auth).
 
 ⚠️ Atenção: Este hack é para fins de desenvolvimento ou testes. Em ambiente de produção, adquira a licença oficial do n8n Enterprise para garantir suporte e conformidade.

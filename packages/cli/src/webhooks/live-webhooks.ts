@@ -77,14 +77,13 @@ export class LiveWebhooks implements IWebhookManager {
 
 		// Reset request parameters
 		request.params = {} as WebhookRequest['params'];
-
 		const webhook = await this.findWebhook(path, httpMethod);
 
 		if (webhook.isDynamic) {
 			const pathElements = path.split('/').slice(1);
 
 			// extracting params from path
-			webhook.webhookPath.split('/').forEach((ele, index) => {
+			webhook.webhookPath.split('/').forEach((ele: string, index: number) => {
 				if (ele.startsWith(':')) {
 					// write params to req.params
 					request.params[ele.slice(1)] = pathElements[index];

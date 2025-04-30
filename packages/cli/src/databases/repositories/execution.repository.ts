@@ -42,6 +42,7 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/interfaces';
+import { tenantContext } from '@/multitenancy/context';
 import { separate } from '@/utils';
 
 import { ExecutionDataRepository } from './execution-data.repository';
@@ -312,18 +313,22 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	/**
 	 * Insert a new execution and its execution data using a transaction.
-	 */
-	async createNewExecution(execution: CreateExecutionPayload): Promise<string> {
+	 */ async createNewExecution(execution: CreateExecutionPayload): Promise<string> {
 		const { data: dataObj, workflowData: currentWorkflow, ...rest } = execution;
 		const { connections, nodes, name, settings } = currentWorkflow ?? {};
 		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
 		const data = stringify(dataObj);
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 
 		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
 			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
 			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
-			const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
+			const { identifiers: inserted } = await this.insert({
+				...rest,
+				createdAt: new Date(),
+				tenantId,
+			});
 			const { id: executionId } = inserted[0] as { id: string };
 			await this.executionDataRepository.insert({ executionId, workflowData, data });
 			return String(executionId);
@@ -333,6 +338,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
 					...rest,
 					createdAt: new Date(),
+					tenantId,
 				});
 				const { id: executionId } = inserted[0] as { id: string };
 				await this.executionDataRepository.createExecutionDataForExecution(
@@ -544,16 +550,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			)
 			.execute();
 	}
-
 	async findSoftDeletedExecutions() {
 		const date = new Date();
 		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({
 				select: ['workflowId', 'id'],
 				where: {
 					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+					tenantId,
 				},
 				take: this.hardDeletionBatchSize,
 
@@ -571,13 +578,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async deleteByIds(executionIds: string[]) {
 		return await this.delete({ id: In(executionIds) });
 	}
-
 	async getWaitingExecutions() {
 		// Find all the executions which should be triggered in the next 70 seconds
 		const waitTill = new Date(Date.now() + 70000);
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		const where: FindOptionsWhere<ExecutionEntity> = {
 			waitTill: LessThanOrEqual(waitTill),
 			status: Not('crashed'),
+			tenantId,
 		};
 
 		const dbType = this.globalConfig.database.type;
@@ -629,7 +637,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return condition;
 	}
-
 	async getExecutionsForPublicApi(params: {
 		limit: number;
 		includeData?: boolean;
@@ -638,7 +645,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		status?: ExecutionStatus;
 		excludedExecutionsIds?: string[];
 	}): Promise<IExecutionBase[]> {
-		let where: FindOptionsWhere<IExecutionFlattedDb> = {};
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		let where: FindOptionsWhere<IExecutionFlattedDb> = { tenantId };
 
 		if (params.lastId && params.excludedExecutionsIds?.length) {
 			where.id = Raw((id) => `${id} < :lastId AND ${id} NOT IN (:...excludedExecutionsIds)`, {
@@ -697,11 +705,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			unflattenData: true,
 		});
 	}
-
 	async findWithUnflattenedData(executionId: string, accessibleWorkflowIds: string[]) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.findSingleExecution(executionId, {
 			where: {
 				workflowId: In(accessibleWorkflowIds),
+				tenantId,
 			},
 			includeData: true,
 			unflattenData: true,
@@ -710,9 +719,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async findIfShared(executionId: string, sharedWorkflowIds: string[]) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.findSingleExecution(executionId, {
 			where: {
 				workflowId: In(sharedWorkflowIds),
+				tenantId,
 			},
 			includeData: true,
 			unflattenData: false,
@@ -721,8 +732,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	async findIfAccessible(executionId: string, accessibleWorkflowIds: string[]) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.findSingleExecution(executionId, {
-			where: { workflowId: In(accessibleWorkflowIds) },
+			where: {
+				workflowId: In(accessibleWorkflowIds),
+				tenantId,
+			},
 		});
 	}
 

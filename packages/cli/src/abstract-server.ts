@@ -194,12 +194,21 @@ export abstract class AbstractServer {
 		if (this.webhooksEnabled) {
 			const liveWebhooksRequestHandler = createWebhookHandlerFor(Container.get(LiveWebhooks));
 			// Register a handler for live forms
+			this.app.all(`/:tenantId/${this.endpointForm}/*path`, liveWebhooksRequestHandler);
+			// Manter compatibilidade com rotas antigas
 			this.app.all(`/${this.endpointForm}/*path`, liveWebhooksRequestHandler);
 
 			// Register a handler for live webhooks
+			this.app.all(`/:tenantId/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
+			// Manter compatibilidade com rotas antigas
 			this.app.all(`/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
 
 			// Register a handler for waiting forms
+			this.app.all(
+				`/:tenantId/${this.endpointFormWaiting}/:path{/:suffix}`,
+				createWebhookHandlerFor(Container.get(WaitingForms)),
+			);
+			// Manter compatibilidade com rotas antigas
 			this.app.all(
 				`/${this.endpointFormWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingForms)),
@@ -207,11 +216,18 @@ export abstract class AbstractServer {
 
 			// Register a handler for waiting webhooks
 			this.app.all(
+				`/:tenantId/${this.endpointWebhookWaiting}/:path{/:suffix}`,
+				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
+			);
+			// Manter compatibilidade com rotas antigas
+			this.app.all(
 				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
 				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
 			);
 
 			// Register a handler for live MCP servers
+			this.app.all(`/:tenantId/${this.endpointMcp}/*path`, liveWebhooksRequestHandler);
+			// Manter compatibilidade com rotas antigas
 			this.app.all(`/${this.endpointMcp}/*path`, liveWebhooksRequestHandler);
 		}
 

@@ -1125,6 +1125,14 @@ export function getNodeWebhookUrl(
 	if (path.startsWith('/')) {
 		path = path.slice(1);
 	}
+
+	// Adicionar o tenantId '1' à URL do webhook
+	// Verificar se o baseUrl já contém o tenantId
+	if (!baseUrl.includes('/1/')) {
+		// Se não contém, adicionar o tenantId antes do path
+		return `${baseUrl}/1/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
+	}
+
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
 

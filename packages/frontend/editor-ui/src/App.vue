@@ -9,6 +9,7 @@ import AskAssistantChat from '@/components/AskAssistant/AskAssistantChat.vue';
 import Modals from '@/components/Modals.vue';
 import Telemetry from '@/components/Telemetry.vue';
 import AskAssistantFloatingButton from '@/components/AskAssistant/AskAssistantFloatingButton.vue';
+import TenantRedirector from '@/components/TenantRedirector.vue';
 import { loadLanguage } from '@/plugins/i18n';
 import { APP_MODALS_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/constants';
 import { useRootStore } from '@/stores/root.store';
@@ -83,6 +84,7 @@ watch(defaultLocale, (newLocale) => {
 </script>
 
 <template>
+	<TenantRedirector />
 	<LoadingView v-if="loading" />
 	<div
 		v-else

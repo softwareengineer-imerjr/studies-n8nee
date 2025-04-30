@@ -14,6 +14,10 @@ export class TagEntity extends WithTimestampsAndStringId {
 	@Length(1, 24, { message: 'Tag name must be $constraint1 to $constraint2 characters long.' })
 	name: string;
 
+	@Index()
+	@Column({ length: 36 })
+	tenantId: string;
+
 	@ManyToMany('WorkflowEntity', 'tags')
 	workflows: WorkflowEntity[];
 

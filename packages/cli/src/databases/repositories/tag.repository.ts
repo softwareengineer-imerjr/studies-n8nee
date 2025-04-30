@@ -4,6 +4,7 @@ import { DataSource, In, Repository } from '@n8n/typeorm';
 import intersection from 'lodash/intersection';
 
 import type { IWorkflowDb } from '@/interfaces';
+import { tenantContext } from '@/multitenancy/context';
 
 import { TagEntity } from '../entities/tag-entity';
 
@@ -12,20 +13,21 @@ export class TagRepository extends Repository<TagEntity> {
 	constructor(dataSource: DataSource) {
 		super(TagEntity, dataSource.manager);
 	}
-
 	async findMany(tagIds: string[]) {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		return await this.find({
 			select: ['id', 'name'],
-			where: { id: In(tagIds) },
+			where: { id: In(tagIds), tenantId },
 		});
 	}
 
 	/**
 	 * Set tags on workflow to import while ensuring all tags exist in the database,
 	 * either by matching incoming to existing tags or by creating them first.
-	 */
-	async setTags(tx: EntityManager, dbTags: TagEntity[], workflow: IWorkflowDb) {
+	 */ async setTags(tx: EntityManager, dbTags: TagEntity[], workflow: IWorkflowDb) {
 		if (!workflow?.tags?.length) return;
+
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 
 		for (let i = 0; i < workflow.tags.length; i++) {
 			const importTag = workflow.tags[i];
@@ -51,8 +53,8 @@ export class TagRepository extends Repository<TagEntity> {
 				workflow.tags[i] = nameMatch;
 				continue;
 			}
-
 			const tagEntity = this.create(importTag);
+			tagEntity.tenantId = tenantId;
 
 			workflow.tags[i] = await tx.save<TagEntity>(tagEntity);
 		}
@@ -61,10 +63,10 @@ export class TagRepository extends Repository<TagEntity> {
 	/**
 	 * Returns the workflow IDs that have certain tags.
 	 * Intersection! e.g. workflow needs to have all provided tags.
-	 */
-	async getWorkflowIdsViaTags(tags: string[]): Promise<string[]> {
+	 */ async getWorkflowIdsViaTags(tags: string[]): Promise<string[]> {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
 		const dbTags = await this.find({
-			where: { name: In(tags) },
+			where: { name: In(tags), tenantId },
 			relations: ['workflows'],
 		});
 

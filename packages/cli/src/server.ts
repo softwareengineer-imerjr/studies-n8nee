@@ -206,11 +206,27 @@ export class Server extends AbstractServer {
 
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
-
 		// Middleware multitenant: anexar tenantId do usuário autenticado ao request
 		this.app.use((req: express.Request & { tenantId?: string; user?: any }, _res, next) => {
 			req.tenantId = (req as any).user?.tenantId ?? '';
 			next();
+		});
+
+		// Redirecionamento para URL com tenant ID
+		this.app.use('/', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+			// Ignorar todas as solicitações que não são para a raiz ou já possuem um segmento numérico
+			const isRootRequest = req.path === '/' || req.path === '/index.html';
+			if (!isRootRequest) {
+				return next();
+			}
+
+			// Se o usuário estiver autenticado, redirecionar para o URL com seu tenant ID
+			if (req.user?.tenantId) {
+				return res.redirect(`/${req.user.tenantId}/home/workflows`);
+			}
+
+			// Se não houver usuário autenticado, redirecionar para tenant padrão
+			return res.redirect('/1/home/workflows');
 		});
 
 		// Adicionar middleware de tenant

@@ -106,19 +106,22 @@ const commonChildRouteExtensions = {
 
 export const projectsRoutes: RouteRecordRaw[] = [
 	{
-		path: '/projects',
+		path: '/:tenantId/projects',
 		name: VIEWS.PROJECTS,
 		meta: {
 			middleware: ['authenticated'],
 		},
-		redirect: '/home/workflows',
+		redirect: (to) => `/${to.params.tenantId}/home/workflows`,
 		children: [
 			{
 				path: ':projectId',
 				meta: {
 					middleware: ['authenticated'],
 				},
-				redirect: { name: VIEWS.PROJECTS_WORKFLOWS },
+				redirect: (to) => ({
+					name: VIEWS.PROJECTS_WORKFLOWS,
+					params: { tenantId: to.params.tenantId, projectId: to.params.projectId },
+				}),
 				children: commonChildRoutes
 					.map((route, idx) => ({
 						...route,
@@ -161,15 +164,35 @@ export const projectsRoutes: RouteRecordRaw[] = [
 		})),
 	},
 	{
+		path: '/:tenantId/home',
+		name: VIEWS.HOMEPAGE_WITH_TENANT,
+		meta: {
+			middleware: ['authenticated'],
+		},
+		redirect: (to) => `/${to.params.tenantId}/home/workflows`,
+		children: commonChildRoutes.map((route, idx) => ({
+			...route,
+			name: `${commonChildRouteExtensions.home[idx].name}_WITH_TENANT`,
+		})),
+	},
+	{
 		path: '/workflows',
 		redirect: '/home/workflows',
 	},
 	{
+		path: '/:tenantId/workflows',
+		redirect: (to) => `/${to.params.tenantId}/home/workflows`,
+	},
+	{
 		path: '/credentials',
-		redirect: '/home/credentials',
+		redirect: () => '/1/home/credentials',
+	},
+	{
+		path: '/:tenantId/credentials',
+		redirect: (to) => `/${to.params.tenantId}/home/credentials`,
 	},
 	{
 		path: '/executions',
-		redirect: '/home/executions',
+		redirect: () => '/1/home/executions',
 	},
 ];

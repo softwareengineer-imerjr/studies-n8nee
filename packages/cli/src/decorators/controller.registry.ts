@@ -71,7 +71,23 @@ export class ControllerRegistry {
 		const prefix = `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`
 			.replace(/\/+/g, '/')
 			.replace(/\/$/, '');
+
+		// Rota original para compatibilidade
 		app.use(prefix, router);
+
+		// Nova rota com tenantId antes do endpoint rest
+		const tenantPrefix = `/1/${this.globalConfig.endpoints.rest}/${metadata.basePath}`
+			.replace(/\/+/g, '/')
+			.replace(/\/$/, '');
+
+		// Criando um novo router para a rota com tenantId
+		const tenantRouter = Router({ mergeParams: true });
+		app.use(tenantPrefix, tenantRouter);
+
+		// Copiando as rotas do router original para o router com tenantId
+		for (const layer of router.stack) {
+			tenantRouter.stack.push(layer);
+		}
 
 		const controller = Container.get(controllerClass) as Controller;
 		const controllerMiddlewares = metadata.middlewares.map(

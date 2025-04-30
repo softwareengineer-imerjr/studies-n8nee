@@ -184,6 +184,7 @@ export interface IExecutionFlattedDb extends IExecutionBase {
 	data: string;
 	workflowData: Omit<IWorkflowBase, 'pinData'>;
 	customData: Record<string, string>;
+	tenantId: string;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {

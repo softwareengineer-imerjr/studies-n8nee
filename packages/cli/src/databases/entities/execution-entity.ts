@@ -31,6 +31,10 @@ export class ExecutionEntity {
 	@PrimaryColumn({ transformer: idStringifier })
 	id: string;
 
+	@Index()
+	@Column({ length: 36 })
+	tenantId: string;
+
 	/**
 	 * Whether the execution finished sucessfully.
 	 *

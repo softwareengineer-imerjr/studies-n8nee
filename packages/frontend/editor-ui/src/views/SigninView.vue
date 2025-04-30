@@ -14,7 +14,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 import type { IFormBoxConfig } from '@/Interface';
-import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/constants';
+import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, MFA_FORM } from '@/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
@@ -126,7 +126,7 @@ const login = async (form: LoginRequestDto) => {
 			try {
 				await cloudPlanStore.checkForCloudPlanData();
 			} catch (error) {
-				console.warn('Failed to check for cloud plan data', error);
+				// Silenciar erro
 			}
 		}
 		await settingsStore.getSettings();
@@ -147,7 +147,11 @@ const login = async (form: LoginRequestDto) => {
 			return;
 		}
 
-		await router.push({ name: VIEWS.HOMEPAGE });
+		// Redirecionar para a página inicial com o tenantId
+		const tenantId = usersStore.currentUser?.tenantId ?? '1';
+
+		// Usar window.location para forçar o redirecionamento completo
+		window.location.href = `${window.location.origin}/${tenantId}/home/workflows`;
 	} catch (error) {
 		if (error.errorCode === MFA_AUTHENTICATION_REQUIRED_ERROR_CODE) {
 			showMfaView.value = true;

@@ -4,6 +4,7 @@ import { DataSource, Repository } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
+import { tenantContext } from '@/multitenancy/context';
 
 import type { FolderWithWorkflowAndSubFolderCount } from '../entities/folder';
 import { Folder } from '../entities/folder';
@@ -144,11 +145,13 @@ export class FolderRepository extends Repository<FolderWithWorkflowAndSubFolderC
 			this.applyExcludeFolderFilter(query, filter.excludeFolderIdAndDescendants);
 		}
 	}
-
 	private applyBasicFilters(
 		query: SelectQueryBuilder<FolderWithWorkflowAndSubFolderCount>,
 		filter: ListQuery.Options['filter'],
 	): void {
+		const tenantId = tenantContext.getStore()?.tenantId ?? '';
+		query.andWhere('folder.tenantId = :tenantId', { tenantId });
+
 		if (filter?.folderIds && Array.isArray(filter.folderIds)) {
 			query.andWhere('folder.id IN (:...folderIds)', {
 				/*

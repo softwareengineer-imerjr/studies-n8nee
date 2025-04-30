@@ -69,7 +69,16 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (this.useWebSockets) {
 			const wsServer = new WSServer({ noServer: true });
 			server.on('upgrade', (request: WebSocketPushRequest, socket, upgradeHead) => {
-				if (parseUrl(request.url).pathname === `/${restEndpoint}/push`) {
+				// Verificando a URL do WebSocket
+				const pathname = parseUrl(request.url).pathname;
+				this.logger.debug(`WebSocket upgrade request for path: ${pathname}`);
+
+				// Suporte para diferentes formatos de URL
+				if (
+					pathname === `/${restEndpoint}/push` ||
+					pathname === `/${restEndpoint}/1/push` ||
+					pathname === `/1/${restEndpoint}/push`
+				) {
 					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
 						request.ws = ws;
 
@@ -83,6 +92,10 @@ export class Push extends TypedEmitter<PushEvents> {
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 						app.handle(request, response);
 					});
+				} else {
+					// Fechar conexão para URLs não suportadas
+					this.logger.warn(`Unsupported WebSocket path: ${pathname}`);
+					socket.destroy();
 				}
 			});
 		}
@@ -90,8 +103,27 @@ export class Push extends TypedEmitter<PushEvents> {
 
 	/** Sets up the push endppoint that the frontend connects to. */
 	setupPushHandler(restEndpoint: string, app: Application) {
+		// Rota original para compatibilidade
 		app.use(
 			`/${restEndpoint}/push`,
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			this.authService.authMiddleware,
+			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>
+				this.handleRequest(req, res),
+		);
+
+		// Rota com tenantId após o endpoint rest
+		app.use(
+			`/${restEndpoint}/1/push`,
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			this.authService.authMiddleware,
+			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>
+				this.handleRequest(req, res),
+		);
+
+		// Rota com tenantId antes do endpoint rest
+		app.use(
+			`/1/${restEndpoint}/push`,
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			this.authService.authMiddleware,
 			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>
