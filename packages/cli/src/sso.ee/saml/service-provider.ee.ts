@@ -7,16 +7,22 @@ import { UrlService } from '@/services/url.service';
 let serviceProviderInstance: ServiceProviderInstance | undefined;
 
 export function getServiceProviderEntityId(): string {
-	return Container.get(UrlService).getInstanceBaseUrl() + '/rest/sso/saml/metadata';
+	// Adicionando o tenantId '1' na URL de metadados
+	const baseUrl = Container.get(UrlService).getInstanceBaseUrl();
+	return `${baseUrl}/1/rest/sso/saml/metadata`;
 }
 
 export function getServiceProviderReturnUrl(): string {
-	return Container.get(UrlService).getInstanceBaseUrl() + '/rest/sso/saml/acs';
+	// Adicionando o tenantId '1' na URL de redirecionamento
+	const baseUrl = Container.get(UrlService).getInstanceBaseUrl();
+	return `${baseUrl}/1/rest/sso/saml/acs`;
 }
 
 export function getServiceProviderConfigTestReturnUrl(): string {
 	// TODO: what is this URL?
-	return Container.get(UrlService).getInstanceBaseUrl() + '/config/test/return';
+	// Adicionando o tenantId '1' na URL de teste
+	const baseUrl = Container.get(UrlService).getInstanceBaseUrl();
+	return `${baseUrl}/1/config/test/return`;
 }
 
 // TODO:SAML: make these configurable for the end user

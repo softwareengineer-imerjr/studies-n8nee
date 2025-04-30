@@ -128,10 +128,22 @@ export class SamlController {
 				if (isSamlLicensedAndEnabled()) {
 					this.authService.issueCookie(res, loginResult.authenticatedUser, req.browserId);
 					if (loginResult.onboardingRequired) {
-						return res.redirect(this.urlService.getInstanceBaseUrl() + '/saml/onboarding');
+						return res.redirect(this.urlService.getInstanceBaseUrl() + '/1/saml/onboarding');
 					} else {
 						const redirectUrl = payload.RelayState ?? '/';
-						return res.redirect(this.urlService.getInstanceBaseUrl() + redirectUrl);
+						// Adicionar o tenantId à URL de redirecionamento
+						const baseUrl = this.urlService.getInstanceBaseUrl();
+						const tenantId = '1'; // Usando o tenantId padrão
+
+						// Se o redirectUrl já começa com /, adicionar o tenantId antes
+						if (redirectUrl.startsWith('/')) {
+							// Verificar se já tem o tenantId no início
+							if (!redirectUrl.startsWith(`/${tenantId}/`)) {
+								return res.redirect(`${baseUrl}/${tenantId}${redirectUrl}`);
+							}
+						}
+
+						return res.redirect(baseUrl + redirectUrl);
 					}
 				} else {
 					return res.status(202).send(loginResult.attributes);
