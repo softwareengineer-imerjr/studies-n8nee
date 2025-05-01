@@ -158,8 +158,8 @@ Coloque Dockerfile e docker-compose.yml na raiz do repositório. (somente os ser
 Execute na raiz do repositório:
 
 docker-compose up -d --build
-
 pnpm install
+pnpm build
 
 execute na pasta packages/cli
 pnpm install
