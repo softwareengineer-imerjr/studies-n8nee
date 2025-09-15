@@ -63,7 +63,7 @@ export class PasswordResetController {
 		// User should just be able to reset password if one is already present
 		const user = await this.userRepository.findNonShellUser(email);
 
-		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
+		if (!user?.isOwner && !this.license.isWithinUsersLimitOrSkip()) {
 			this.logger.debug(
 				'Request to send password reset email failed because the user limit was reached',
 			);
@@ -140,7 +140,7 @@ export class PasswordResetController {
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
-		if (!user?.isOwner && !this.license.isWithinUsersLimit()) {
+		if (!user?.isOwner && !this.license.isWithinUsersLimitOrSkip()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',
 				{ userId: user.id },
