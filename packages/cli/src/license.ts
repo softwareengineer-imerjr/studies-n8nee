@@ -409,6 +409,10 @@ export class License {
 		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
 	}
 
+	isWithinUsersLimitOrSkip() {
+		return process.env.N8N_SKIP_LICENSE_CHECK === 'true' || this.isWithinUsersLimit();
+	}
+
 	/**
 	 * Ensures that the instance is licensed for multi-main setup if multi-main mode is enabled
 	 */
