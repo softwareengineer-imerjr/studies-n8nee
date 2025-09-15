@@ -3,6 +3,7 @@ import validator from 'validator';
 
 import type { User } from '@/databases/entities/user';
 import { License } from '@/license';
+import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
 import { createTeamProject, linkUserToProject } from '@test-integration/db/projects';
 
 import { mockInstance } from '../../shared/mocking';
@@ -18,7 +19,8 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 mockInstance(License, {
-	getUsersLimit: jest.fn().mockReturnValue(-1),
+	getUsersLimit: jest.fn().mockReturnValue(UNLIMITED_LICENSE_QUOTA),
+	isWithinUsersLimitOrSkip: jest.fn().mockReturnValue(true),
 });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
@@ -221,7 +223,10 @@ describe('With license without quota:users', () => {
 	let authOwnerAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		mockInstance(License, { getUsersLimit: jest.fn().mockReturnValue(null) });
+		mockInstance(License, {
+			getUsersLimit: jest.fn().mockReturnValue(null),
+			isWithinUsersLimitOrSkip: jest.fn().mockReturnValue(false),
+		});
 
 		const owner = await createOwnerWithApiKey();
 		authOwnerAgent = testServer.publicApiAgentFor(owner);
@@ -233,5 +238,32 @@ describe('With license without quota:users', () => {
 
 	test('GET /users/:id should fail due to invalid license', async () => {
 		await authOwnerAgent.get(`/users/${uuid()}`).expect(403);
+	});
+});
+
+describe('With license check skipped via env var', () => {
+	let authOwnerAgent: SuperAgentTest;
+
+	beforeAll(() => {
+		process.env.N8N_SKIP_LICENSE_CHECK = 'true';
+	});
+
+	afterAll(() => {
+		delete process.env.N8N_SKIP_LICENSE_CHECK;
+	});
+
+	beforeEach(async () => {
+		const license = mockInstance(License);
+		license.getUsersLimit.mockReturnValue(null);
+		license.isWithinUsersLimitOrSkip.mockImplementation(() =>
+			License.prototype.isWithinUsersLimitOrSkip.call(license),
+		);
+
+		const owner = await createOwnerWithApiKey();
+		authOwnerAgent = testServer.publicApiAgentFor(owner);
+	});
+
+	test('GET /users should bypass license check', async () => {
+		await authOwnerAgent.get('/users').expect(200);
 	});
 });
