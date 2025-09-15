@@ -7,14 +7,13 @@ import type { NextFunction } from 'express';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { BooleanLicenseFeature } from '@/interfaces';
 import { License } from '@/license';
+import { UNLIMITED_LICENSE_QUOTA } from '@/constants';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import type { PaginatedRequest } from '../../../types';
 import { decodeCursor } from '../services/pagination.service';
-
-const UNLIMITED_USERS_QUOTA = -1;
 
 export type ProjectScopeResource = 'workflow' | 'credential';
 
@@ -103,7 +102,7 @@ export const validLicenseWithUserQuota = (
 	next: express.NextFunction,
 ): express.Response | void => {
 	const license = Container.get(License);
-	if (license.getUsersLimit() !== UNLIMITED_USERS_QUOTA) {
+	if (license.getUsersLimit() !== UNLIMITED_LICENSE_QUOTA && !license.isWithinUsersLimitOrSkip()) {
 		return res.status(403).json({
 			message: '/users path can only be used with a valid license. See https://n8n.io/pricing/',
 		});
