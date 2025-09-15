@@ -409,8 +409,14 @@ export class License {
 		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
 	}
 
-	isWithinUsersLimitOrSkip() {
-		return process.env.N8N_SKIP_LICENSE_CHECK === 'true' || this.isWithinUsersLimit();
+	isWithinUsersLimitOrSkip(logger?: Logger) {
+		const bypass = process.env.N8N_SKIP_LICENSE_CHECK === 'true';
+		if (bypass) {
+			(logger ?? this.logger).debug(
+				'Bypassing users limit check because N8N_SKIP_LICENSE_CHECK=true',
+			);
+		}
+		return bypass || this.isWithinUsersLimit();
 	}
 
 	/**

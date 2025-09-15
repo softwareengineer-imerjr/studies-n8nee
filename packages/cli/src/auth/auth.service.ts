@@ -114,7 +114,7 @@ export class AuthService {
 	issueCookie(res: Response, user: User, browserId?: string) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
-		const isWithinUsersLimit = this.license.isWithinUsersLimitOrSkip();
+		const isWithinUsersLimit = this.license.isWithinUsersLimitOrSkip(this.logger);
 		if (
 			config.getEnv('userManagement.isInstanceOwnerSetUp') &&
 			!user.isOwner &&
