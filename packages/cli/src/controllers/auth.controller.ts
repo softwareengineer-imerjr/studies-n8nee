@@ -130,7 +130,7 @@ export class AuthController {
 		@Query payload: ResolveSignupTokenQueryDto,
 	) {
 		const { inviterId, inviteeId } = payload;
-		const isWithinUsersLimit = this.license.isWithinUsersLimitOrSkip();
+		const isWithinUsersLimit = this.license.isWithinUsersLimitOrSkip(this.logger);
 
 		if (!isWithinUsersLimit) {
 			this.logger.debug('Request to resolve signup token failed because of users quota reached', {

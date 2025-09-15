@@ -6,7 +6,7 @@ Este projeto aplica customizações ao n8n Community para desbloquear recursos E
 
 ## 🚀 Recursos Habilitados
 
-- **Pular checagem de licença** (`N8N_SKIP_LICENSE_CHECK=true`)
+- **Pular checagem de licença** (`N8N_SKIP_LICENSE_CHECK=true`) com log informativo quando o bypass está ativo
 - **Suporte a múltiplos usuários** (convite por e-mail, roles)
 - **Recursos Enterprise** (admin, compartilhamento, etc.)
 - **Base para isolação por tenantId** (futura implementação)
@@ -30,10 +30,13 @@ Este projeto aplica customizações ao n8n Community para desbloquear recursos E
    - Bypass do limite de usuários: permite convidar além da cota se `N8N_SKIP_LICENSE_CHECK=true`.
    - Lógica de convite por e-mail com checagem de permissão de admin.
 
-4. **`packages/frontend/editor-ui/src/stores/settings.store.ts`**
+4. **`packages/cli/src/license.ts`**
+   - Registro em log quando o limite de usuários é ignorado (`N8N_SKIP_LICENSE_CHECK=true`).
+
+5. **`packages/frontend/editor-ui/src/stores/settings.store.ts`**
    - Exposição de flags de licença (enterprise) ao frontend.
 
-5. **`packages/frontend/editor-ui/src/stores/settings.store.ts`** *(nova modificação)*
+6. **`packages/frontend/editor-ui/src/stores/settings.store.ts`** *(nova modificação)*
    - **HACK**: remove o banner “não-produção” configurando
      ```ts
      if (settings.value.enterprise) {
